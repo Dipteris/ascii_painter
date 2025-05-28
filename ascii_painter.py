@@ -201,8 +201,8 @@ class ASCIIPainter:
             line = ""
             for x in range(width):
                 pixel_value = grayscale.getpixel((x, y))
-                # Map pixel value (0-255) to ASCII character index
-                char_index = int(pixel_value / 255 * (len(self.ascii_chars) - 1))
+                # Map pixel value (0-255) to ASCII character index (invert for correct brightness)
+                char_index = int((255 - pixel_value) / 255 * (len(self.ascii_chars) - 1))
                 line += self.ascii_chars[char_index]
             ascii_lines.append(line)
         
