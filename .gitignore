@@ -80,3 +80,9 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+# Application config files (user preferences)
+ascii_painter_config.json
+
+# Claude Code settings
+.claude/settings.local.json
