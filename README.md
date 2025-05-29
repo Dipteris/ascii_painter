@@ -1,89 +1,138 @@
-# ASCII 畫家
+# ASCII Painter
 
-一款將圖片轉換為 ASCII 字符藝術的圖形化工具程式。
+A graphical tool that converts images into ASCII character art with advanced features and intuitive controls.
 
-## 功能特色
+## Features
 
-- 🖼️ **圖片選擇**：支援多種常見圖片格式（PNG、JPG、JPEG、GIF、BMP、TIFF、WebP）
-- 🎨 **即時轉換**：將圖片轉換為精美的 ASCII 字符藝術
-- 📐 **比較檢視**：左側顯示原始圖片，右側顯示 ASCII 藝術作品
-- ⚙️ **可調參數**：自訂 ASCII 輸出寬度（20-200 字符）
-- 💾 **多種輸出**：支援儲存至檔案或複製到剪貼簿
-- 🎯 **使用者友善**：直觀的圖形化介面
+- 🖼️ **Multi-format Support**: Supports PNG, JPG, JPEG, GIF, BMP, TIFF, WebP image formats
+- 🎨 **Real-time Conversion**: Automatic ASCII conversion upon image selection
+- 📐 **Side-by-side View**: Original image and ASCII art displayed simultaneously
+- 🎯 **Interactive Width Control**: Real-time slider and spinbox for precise width adjustment (20-200 characters)
+- 🔤 **Multiple ASCII Character Sets**: 7 different character sets including Unicode options
+- 🔍 **Zoom Controls**: Independent zoom for both image and ASCII art viewers
+- 💾 **Export Options**: Save to file or copy to clipboard
+- 🎛️ **Organized Interface**: Logical grouping of controls for optimal workflow
+- ⚡ **Smart Preferences**: Automatically saves and restores your settings
 
-## 系統需求
+## ASCII Character Sets
 
-- Python 3.7 或更新版本
-- Pillow 函式庫
+Choose from 7 carefully designed character sets:
 
-## 安裝說明
+1. **8-Level Minimalist (Classic)**: ` .:-=+*#%@`
+2. **10-Level Coarse (Balanced)**: ` .'`^:!|#@`
+3. **16-Level Alternative (Smoother)**: ` .'`^\":;Il!i~+*#%` (Default)
+4. **Unicode Blocks**: ` ░▒▓█`
+5. **Unicode Dot Patterns**: ` ⠀⠄⠆⠇⠿⣿`
+6. **Unicode Mixed Symbols**: ` ·∘○●◉█`
+7. **Unicode Shade Blocks**: ` ▁▂▃▄▅▆▇█`
 
-1. **建立並啟用虛擬環境**：
+## Requirements
+
+- Python 3.8 or higher
+- UV package manager (recommended) or pip
+
+## Installation & Usage
+
+### Using UV (Recommended)
+
+1. **Clone and navigate to the project**:
    ```bash
-   python -m venv venv
-   
-   # Windows
-   venv\Scripts\activate
-   
-   # macOS/Linux
-   source venv/bin/activate
+   git clone <repository-url>
+   cd ascii_painter
    ```
 
-2. **安裝相依套件**：
+2. **Run directly with UV**:
    ```bash
-   pip install -r requirements.txt
+   uv run main.py
    ```
 
-3. **執行程式**：
+### Alternative Method
+
+1. **Install dependencies**:
    ```bash
-   python ascii_painter.py
+   uv sync
    ```
 
-## 使用方法
+2. **Run the application**:
+   ```bash
+   uv run main.py
+   ```
 
-1. 點擊「選擇圖片」按鈕來選擇您想要轉換的圖片
-2. 根據需要調整 ASCII 寬度設定（預設為 80 字符）
-3. 點擊「轉換為 ASCII」按鈕開始轉換
-4. 在左側檢視原始圖片，右側檢視 ASCII 藝術作品
-5. 使用「儲存 ASCII」將結果儲存為文字檔案
-6. 使用「複製到剪貼簿」將 ASCII 藝術複製到剪貼簿
+## User Interface
 
-## 技術細節
+The interface is organized into logical groups:
 
-### ASCII 字符集
-程式使用密度漸變的字符集：` .:-=+*#%@`（從淺到深）
+### Control Panels (Top Row)
+- **File Operations**: Select Image, Save ASCII, Copy to Clipboard
+- **ASCII Controls**: Width slider/spinbox, ASCII mode selection
 
-### 轉換演算法
-- 根據指定寬度調整圖片大小
-- 自動維持長寬比例
-- 轉換為灰階圖片
-- 將像素亮度對應到 ASCII 字符
+### Viewer Panels (Middle Row)
+- **Original Image**: Displays the selected image with zoom capability
+- **ASCII Art**: Shows the converted ASCII art with font size controls
 
-### 支援的圖片格式
-- PNG（.png）
-- JPEG（.jpg, .jpeg）
-- GIF（.gif）
-- BMP（.bmp）
-- TIFF（.tiff）
-- WebP（.webp）
+### Viewer Controls (Bottom Row)
+- **Image Controls**: Zoom In/Out/Reset for the original image
+- **ASCII Controls**: Font size In/Out/Reset for the ASCII display
 
-## 專案結構
+## How to Use
+
+1. **Select an Image**: Click "Select Image" to choose your image file
+2. **Auto-conversion**: ASCII art generates automatically upon selection
+3. **Adjust Width**: 
+   - Drag the slider for real-time preview
+   - Use spinbox arrows for step-by-step adjustment
+   - Type exact values and press Enter
+4. **Choose ASCII Style**: Select from 7 different character sets
+5. **Zoom Views**: Use controls below each viewer to zoom in/out
+6. **Export**: Save to file or copy to clipboard when satisfied
+
+## Technical Details
+
+### Conversion Algorithm
+- Maintains aspect ratio during resizing
+- Converts to grayscale for optimal character mapping
+- Maps pixel brightness to character density
+- Applies character height compensation (0.55 factor)
+
+### Advanced Features
+- **Real-time Conversion**: Instant feedback on all parameter changes
+- **Debounced Input**: Smooth interaction without performance issues
+- **Preference Persistence**: Settings saved in `ascii_painter_config.json`
+- **Unicode Support**: Modern character sets for enhanced visual quality
+- **Responsive UI**: Layout adapts to content without disrupting controls
+
+## Project Structure
 
 ```
 ascii_painter/
-├── ascii_painter.py    # 主程式檔案
-├── requirements.txt    # Python 相依套件
-└── README.md          # 說明文件
+├── main.py                    # Main application file
+├── pyproject.toml            # UV project configuration
+├── uv.lock                   # Dependency lock file
+├── ascii_painter_config.json # User preferences (auto-generated)
+└── README.md                 # This file
 ```
 
-## 授權條款
+## Configuration
 
-此專案採用 MIT 授權條款。
+The application automatically saves your preferences:
+- Selected ASCII character set
+- Font size for ASCII display
+- All settings persist between sessions
 
-## 貢獻指南
+## System Compatibility
 
-歡迎提交 Issue 和 Pull Request 來改善這個專案！
+- **macOS**: Full support with native UI elements
+- **Windows**: Compatible with all features
+- **Linux**: Full functionality with tkinter support
+
+## License
+
+This project is licensed under the MIT License.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ---
 
-**ASCII 畫家** - 讓您的圖片變身為獨特的文字藝術作品！
+**ASCII Painter** - Transform your images into unique text art with professional-grade controls and real-time feedback!

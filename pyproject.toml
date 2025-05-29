@@ -1,0 +1,8 @@
+[project]
+name = "ascii-painter"
+version = "0.1.0"
+description = "Convert images to ASCII art with GUI"
+requires-python = ">=3.8"
+dependencies = [
+    "pillow>=10.0.0",
+]
