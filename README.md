@@ -37,7 +37,7 @@ Choose from 7 carefully designed character sets:
 
 1. **Clone and navigate to the project**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Dipteris/ascii_painter.git
    cd ascii_painter
    ```
 
