@@ -32,6 +32,8 @@ class ASCIIPainter:
         # Current settings
         self.current_ascii_set = "16-Level Alternative (Smoother)"
         self.ascii_chars = self.ascii_sets[self.current_ascii_set]
+        self.invert_colors = False
+        self.aspect_ratio = 100  # Default 100% (no distortion)
         
         # Current image data
         self.original_image = None
@@ -115,6 +117,38 @@ class ASCIIPainter:
                                        state="readonly", width=20)
         ascii_mode_combo.grid(row=3, column=0, sticky=(tk.W, tk.E))
         ascii_mode_combo.bind('<<ComboboxSelected>>', self.on_ascii_mode_change)
+        
+        # Invert colors checkbox
+        self.invert_var = tk.BooleanVar(value=self.invert_colors)
+        invert_checkbox = ttk.Checkbutton(ascii_controls, text="Invert Colors", 
+                                         variable=self.invert_var,
+                                         command=self.on_invert_change)
+        invert_checkbox.grid(row=4, column=0, sticky=tk.W, pady=(5, 0))
+        
+        # Aspect ratio controls
+        ttk.Label(ascii_controls, text="Aspect Ratio (%):").grid(row=5, column=0, sticky=tk.W, pady=(10, 3))
+        
+        # Aspect ratio controls with slider and spinbox
+        aspect_frame = ttk.Frame(ascii_controls)
+        aspect_frame.grid(row=6, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        aspect_frame.columnconfigure(0, weight=1)
+        
+        self.aspect_var = tk.IntVar(value=self.aspect_ratio)
+        
+        # Real-time slider (30% to 200%)
+        aspect_slider = tk.Scale(aspect_frame, from_=30, to=200, 
+                                variable=self.aspect_var, orient=tk.HORIZONTAL,
+                                command=self.on_aspect_slider_move,
+                                resolution=1,  # Integer values only
+                                showvalue=0)   # Hide value display (spinbox shows it)
+        aspect_slider.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        
+        # Spinbox for precise entry (Enter to apply)
+        aspect_spinbox = ttk.Spinbox(aspect_frame, from_=30, to=200, 
+                                    textvariable=self.aspect_var, width=5,
+                                    command=self.on_aspect_spinbox_change)
+        aspect_spinbox.grid(row=0, column=1)
+        aspect_spinbox.bind('<Return>', self.on_aspect_enter)
         
         
         # Image display frame (left side)
@@ -239,7 +273,9 @@ class ASCIIPainter:
         """Convert PIL Image to ASCII art"""
         # Calculate height to maintain aspect ratio
         aspect_ratio = image.height / image.width
-        height = int(width * aspect_ratio * 0.55)  # 0.55 to compensate for character height
+        # Apply character height compensation (0.55) and user's aspect ratio percentage
+        # UI shows 100% = "normal", but internally applies 0.55 base compensation
+        height = int(width * aspect_ratio * 0.55 * (self.aspect_ratio / 100))
         
         # Resize image
         resized = image.resize((width, height))
@@ -253,8 +289,13 @@ class ASCIIPainter:
             line = ""
             for x in range(width):
                 pixel_value = grayscale.getpixel((x, y))
-                # Map pixel value (0-255) to ASCII character index (invert for correct brightness)
-                char_index = int((255 - pixel_value) / 255 * (len(self.ascii_chars) - 1))
+                # Map pixel value (0-255) to ASCII character index
+                if self.invert_colors:
+                    # Normal mapping (bright pixels -> light characters)
+                    char_index = int(pixel_value / 255 * (len(self.ascii_chars) - 1))
+                else:
+                    # Inverted mapping (bright pixels -> dark characters)
+                    char_index = int((255 - pixel_value) / 255 * (len(self.ascii_chars) - 1))
                 line += self.ascii_chars[char_index]
             ascii_lines.append(line)
         
@@ -410,6 +451,37 @@ class ASCIIPainter:
         if self.original_image:
             self.convert_to_ascii()
     
+    def on_invert_change(self):
+        """Handle invert colors checkbox change"""
+        self.invert_colors = self.invert_var.get()
+        self.save_preferences()
+        
+        # Auto-convert if image is loaded
+        if self.original_image:
+            self.convert_to_ascii()
+    
+    def on_aspect_slider_move(self, value):
+        """Handle real-time aspect ratio slider movement with conversion"""
+        self.aspect_ratio = self.aspect_var.get()
+        self.save_preferences()
+        # Convert in real-time as slider moves
+        if self.original_image:
+            self.convert_to_ascii()
+    
+    def on_aspect_enter(self, event):
+        """Handle Enter key in aspect ratio spinbox (triggers conversion)"""
+        self.aspect_ratio = self.aspect_var.get()
+        self.save_preferences()
+        if self.original_image:
+            self.convert_to_ascii()
+    
+    def on_aspect_spinbox_change(self):
+        """Handle spinbox up/down arrows (triggers conversion)"""
+        self.aspect_ratio = self.aspect_var.get()
+        self.save_preferences()
+        if self.original_image:
+            self.convert_to_ascii()
+    
     def load_preferences(self):
         """Load user preferences from config file"""
         try:
@@ -417,6 +489,8 @@ class ASCIIPainter:
                 config = json.load(f)
                 self.current_ascii_set = config.get('ascii_set', '16-Level Alternative (Smoother)')
                 self.ascii_font_size = config.get('font_size', 8)
+                self.invert_colors = config.get('invert_colors', False)
+                self.aspect_ratio = config.get('aspect_ratio', 100)
                 self.ascii_chars = self.ascii_sets.get(self.current_ascii_set, self.ascii_sets['16-Level Alternative (Smoother)'])
         except (FileNotFoundError, json.JSONDecodeError):
             # Use defaults if no config file or corrupted file
@@ -427,7 +501,9 @@ class ASCIIPainter:
         try:
             config = {
                 'ascii_set': self.current_ascii_set,
-                'font_size': self.ascii_font_size
+                'font_size': self.ascii_font_size,
+                'invert_colors': self.invert_colors,
+                'aspect_ratio': self.aspect_ratio
             }
             with open('ascii_painter_config.json', 'w') as f:
                 json.dump(config, f, indent=2)
