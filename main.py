@@ -11,13 +11,76 @@ import os
 import tempfile
 import json
 import numpy as np
+import logging
+from typing import Optional, Dict, Any, Callable
+from functools import wraps
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# UI Constants
+class UIConstants:
+    """Constants for UI layout and behavior"""
+    WINDOW_SIZE = "1200x800"
+    WINDOW_BG = '#f0f0f0'
+    TITLE_FONT = ('Arial', 16, 'bold')
+    SECTION_FONT = ('Arial', 9, 'bold')
+    HIST_FONT = ('Arial', 8)
+    LABEL_FONT = ('Arial', 7)
+    ASCII_FONT = 'Courier'
+    
+    # Zoom and sizing
+    ZOOM_FACTOR = 1.2
+    BASE_IMAGE_SIZE = 400
+    MIN_FONT_SIZE = 4
+    MAX_FONT_SIZE = 24
+    DEFAULT_FONT_SIZE = 8
+    
+    # Image optimization
+    MAX_ASCII_WIDTH = 200
+    OPTIMAL_PIXEL_MULTIPLIER = 4
+    MAX_PIXEL_HEIGHT = 1200
+    
+    # Histogram
+    HIST_BINS = 64
+    HIST_MARGIN = 20
+    HIST_GRID_LINES = 5
+    
+    # Character height compensation
+    CHAR_HEIGHT_COMPENSATION = 0.55
+
+
+def handle_errors(func: Callable) -> Callable:
+    """Decorator to handle and log errors in methods"""
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in {func.__name__}: {str(e)}")
+            if hasattr(self, 'root'):
+                messagebox.showerror("Error", f"An error occurred in {func.__name__}: {str(e)}")
+            raise
+    return wrapper
 
 class ASCIIPainter:
-    def __init__(self, root):
+    """Main application class for ASCII Painter.
+    
+    A GUI application that converts images to ASCII art with professional
+    image adjustment capabilities including levels, gamma, brightness, and contrast.
+    """
+    
+    def __init__(self, root: tk.Tk) -> None:
+        """Initialize the ASCII Painter application.
+        
+        Args:
+            root: The root tkinter window
+        """
         self.root = root
         self.root.title("ASCII Painter")
-        self.root.geometry("1200x800")
-        self.root.configure(bg='#f0f0f0')
+        self.root.geometry(UIConstants.WINDOW_SIZE)
+        self.root.configure(bg=UIConstants.WINDOW_BG)
         
         # ASCII character sets
         self.ascii_sets = {
@@ -44,12 +107,12 @@ class ASCIIPainter:
         self.contrast = 0         # -100 to +100
         
         # Current image data
-        self.original_image = None
-        self.ascii_text = ""
+        self.original_image: Optional[Image.Image] = None
+        self.ascii_text: str = ""
         
         # Zoom settings
-        self.image_zoom = 1.0
-        self.ascii_font_size = 8
+        self.image_zoom: float = 1.0
+        self.ascii_font_size: int = UIConstants.DEFAULT_FONT_SIZE
         
         
         # Load preferences
@@ -57,7 +120,45 @@ class ASCIIPainter:
         
         self.setup_ui()
     
-    def setup_ui(self):
+    def _create_adjustment_handler(self, attr_name: str, var_obj: tk.Variable) -> Dict[str, Callable]:
+        """Create standardized handlers for adjustment controls.
+        
+        Args:
+            attr_name: Name of the attribute to update
+            var_obj: Tkinter variable object
+            
+        Returns:
+            Dictionary containing slider, spinbox, and enter event handlers
+        """
+        def slider_handler(value):
+            setattr(self, attr_name, var_obj.get())
+            self.save_preferences()
+            if self.original_image:
+                self.update_histogram(self.apply_adjustments(self.original_image))
+                self.convert_to_ascii()
+        
+        def spinbox_handler():
+            setattr(self, attr_name, var_obj.get())
+            self.save_preferences()
+            if self.original_image:
+                self.update_histogram(self.apply_adjustments(self.original_image))
+                self.convert_to_ascii()
+        
+        def enter_handler(event):
+            setattr(self, attr_name, var_obj.get())
+            self.save_preferences()
+            if self.original_image:
+                self.update_histogram(self.apply_adjustments(self.original_image))
+                self.convert_to_ascii()
+        
+        return {
+            'slider': slider_handler,
+            'spinbox': spinbox_handler,
+            'enter': enter_handler
+        }
+    
+    def setup_ui(self) -> None:
+        """Set up the main user interface."""
         # Main frame
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -72,13 +173,27 @@ class ASCIIPainter:
         
         # Title
         title_label = ttk.Label(main_frame, text="ASCII Painter", 
-                               font=('Arial', 16, 'bold'))
+                               font=UIConstants.TITLE_FONT)
         title_label.grid(row=0, column=0, columnspan=4, pady=(0, 10))
         
-        # === TOP ROW - 3 SECTIONS ===
+        # Initialize Tkinter variables for UI controls
+        self.black_var = tk.IntVar(value=self.black_level)
+        self.white_var = tk.IntVar(value=self.white_level)
+        self.gamma_var = tk.DoubleVar(value=self.gamma)
+        self.brightness_var = tk.IntVar(value=self.brightness)
+        self.contrast_var = tk.IntVar(value=self.contrast)
         
+        # Set up the three main sections
+        self._setup_histogram_section(main_frame)
+        self._setup_adjustments_section(main_frame)
+        self._setup_controls_section(main_frame)
+        self._setup_viewer_sections(main_frame)
+        self._setup_control_buttons(main_frame)
+    
+    def _setup_histogram_section(self, parent: ttk.Frame) -> None:
+        """Set up the histogram display section."""
         # Section 1: Histogram (matches Original Image width - spans columns 0-1)
-        histogram_frame = ttk.LabelFrame(main_frame, text="Histogram", padding="5")
+        histogram_frame = ttk.LabelFrame(parent, text="Histogram", padding="5")
         histogram_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 2), pady=(0, 10))
         histogram_frame.columnconfigure(0, weight=1)
         histogram_frame.rowconfigure(0, weight=1)
@@ -92,132 +207,104 @@ class ASCIIPainter:
         
         # Initialize empty histogram
         self.update_histogram(None)
-        
+    
+    def _setup_adjustments_section(self, parent: ttk.Frame) -> None:
+        """Set up the image adjustments section."""
         # Section 2: Image Adjustments (left part of ASCII viewer width - column 2)
-        adjustments_frame = ttk.LabelFrame(main_frame, text="Image Adjustments", padding="5")
+        adjustments_frame = ttk.LabelFrame(parent, text="Image Adjustments", padding="5")
         adjustments_frame.grid(row=1, column=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(2, 2), pady=(0, 10))
         
-        # Levels Section
-        levels_label = ttk.Label(adjustments_frame, text="Levels", font=('Arial', 9, 'bold'))
-        levels_label.grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
-        
-        # Black Level
-        ttk.Label(adjustments_frame, text="Black:").grid(row=1, column=0, sticky=tk.W)
-        
-        black_frame = ttk.Frame(adjustments_frame)
-        black_frame.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
-        black_frame.columnconfigure(0, weight=1)
-        
-        self.black_var = tk.IntVar(value=self.black_level)
-        black_slider = tk.Scale(black_frame, from_=0, to=255, variable=self.black_var, 
-                               orient=tk.HORIZONTAL, command=self.on_black_change, 
-                               resolution=1, showvalue=0, length=100)
-        black_slider.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
-        
-        black_spinbox = ttk.Spinbox(black_frame, from_=0, to=255, 
-                                   textvariable=self.black_var, width=5,
-                                   command=self.on_black_spinbox_change)
-        black_spinbox.grid(row=0, column=1)
-        black_spinbox.bind('<Return>', self.on_black_enter)
-        
-        ttk.Button(adjustments_frame, text="↺", command=self.reset_black_level, width=3).grid(row=1, column=2)
-        
-        # Gamma
-        ttk.Label(adjustments_frame, text="Gamma:").grid(row=2, column=0, sticky=tk.W)
-        
-        gamma_frame = ttk.Frame(adjustments_frame)
-        gamma_frame.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
-        gamma_frame.columnconfigure(0, weight=1)
-        
-        self.gamma_var = tk.DoubleVar(value=self.gamma)
-        gamma_slider = tk.Scale(gamma_frame, from_=0.1, to=3.0, variable=self.gamma_var, 
-                               orient=tk.HORIZONTAL, command=self.on_gamma_change, 
-                               resolution=0.1, showvalue=0, length=100)
-        gamma_slider.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
-        
-        gamma_spinbox = ttk.Spinbox(gamma_frame, from_=0.1, to=3.0, 
-                                   textvariable=self.gamma_var, width=5, increment=0.1,
-                                   command=self.on_gamma_spinbox_change, format="%.1f")
-        gamma_spinbox.grid(row=0, column=1)
-        gamma_spinbox.bind('<Return>', self.on_gamma_enter)
-        
-        ttk.Button(adjustments_frame, text="↺", command=self.reset_gamma, width=3).grid(row=2, column=2)
-        
-        # White Level
-        ttk.Label(adjustments_frame, text="White:").grid(row=3, column=0, sticky=tk.W)
-        
-        white_frame = ttk.Frame(adjustments_frame)
-        white_frame.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
-        white_frame.columnconfigure(0, weight=1)
-        
-        self.white_var = tk.IntVar(value=self.white_level)
-        white_slider = tk.Scale(white_frame, from_=0, to=255, variable=self.white_var, 
-                               orient=tk.HORIZONTAL, command=self.on_white_change, 
-                               resolution=1, showvalue=0, length=100)
-        white_slider.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
-        
-        white_spinbox = ttk.Spinbox(white_frame, from_=0, to=255, 
-                                   textvariable=self.white_var, width=5,
-                                   command=self.on_white_spinbox_change)
-        white_spinbox.grid(row=0, column=1)
-        white_spinbox.bind('<Return>', self.on_white_enter)
-        
-        ttk.Button(adjustments_frame, text="↺", command=self.reset_white_level, width=3).grid(row=3, column=2)
-        
-        # Basic Adjustments Section
-        basic_label = ttk.Label(adjustments_frame, text="Basic Adjustments", font=('Arial', 9, 'bold'))
-        basic_label.grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=(15, 5))
-        
-        # Brightness
-        ttk.Label(adjustments_frame, text="Brightness:").grid(row=5, column=0, sticky=tk.W)
-        
-        brightness_frame = ttk.Frame(adjustments_frame)
-        brightness_frame.grid(row=5, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
-        brightness_frame.columnconfigure(0, weight=1)
-        
-        self.brightness_var = tk.IntVar(value=self.brightness)
-        brightness_slider = tk.Scale(brightness_frame, from_=-100, to=100, variable=self.brightness_var, 
-                                    orient=tk.HORIZONTAL, command=self.on_brightness_change, 
-                                    resolution=1, showvalue=0, length=100)
-        brightness_slider.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
-        
-        brightness_spinbox = ttk.Spinbox(brightness_frame, from_=-100, to=100, 
-                                        textvariable=self.brightness_var, width=5,
-                                        command=self.on_brightness_spinbox_change)
-        brightness_spinbox.grid(row=0, column=1)
-        brightness_spinbox.bind('<Return>', self.on_brightness_enter)
-        
-        ttk.Button(adjustments_frame, text="↺", command=self.reset_brightness, width=3).grid(row=5, column=2)
-        
-        # Contrast
-        ttk.Label(adjustments_frame, text="Contrast:").grid(row=6, column=0, sticky=tk.W)
-        
-        contrast_frame = ttk.Frame(adjustments_frame)
-        contrast_frame.grid(row=6, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
-        contrast_frame.columnconfigure(0, weight=1)
-        
-        self.contrast_var = tk.IntVar(value=self.contrast)
-        contrast_slider = tk.Scale(contrast_frame, from_=-100, to=100, variable=self.contrast_var, 
-                                  orient=tk.HORIZONTAL, command=self.on_contrast_change, 
-                                  resolution=1, showvalue=0, length=100)
-        contrast_slider.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
-        
-        contrast_spinbox = ttk.Spinbox(contrast_frame, from_=-100, to=100, 
-                                      textvariable=self.contrast_var, width=5,
-                                      command=self.on_contrast_spinbox_change)
-        contrast_spinbox.grid(row=0, column=1)
-        contrast_spinbox.bind('<Return>', self.on_contrast_enter)
-        
-        ttk.Button(adjustments_frame, text="↺", command=self.reset_contrast, width=3).grid(row=6, column=2)
+        self._setup_levels_controls(adjustments_frame)
+        self._setup_basic_adjustments(adjustments_frame)
         
         # Reset All button
         ttk.Button(adjustments_frame, text="Reset All", command=self.reset_all_adjustments).grid(row=7, column=0, columnspan=3, pady=(15, 0))
         
         # Configure column weights for adjustments frame
         adjustments_frame.columnconfigure(1, weight=1)
+    
+    def _setup_levels_controls(self, parent: ttk.Frame) -> None:
+        """Set up the levels control section."""
+        # Levels Section
+        levels_label = ttk.Label(parent, text="Levels", font=UIConstants.SECTION_FONT)
+        levels_label.grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
         
+        # Create handlers for all adjustments
+        black_handlers = self._create_adjustment_handler('black_level', self.black_var)
+        gamma_handlers = self._create_adjustment_handler('gamma', self.gamma_var)
+        white_handlers = self._create_adjustment_handler('white_level', self.white_var)
+        
+        # Black Level
+        self._create_adjustment_control(parent, "Black:", 1, 0, 255, self.black_var, 
+                                      black_handlers, self.reset_black_level, resolution=1)
+        
+        # Gamma
+        self._create_adjustment_control(parent, "Gamma:", 2, 0.1, 3.0, self.gamma_var,
+                                      gamma_handlers, self.reset_gamma, resolution=0.1, format_str="%.1f", increment=0.1)
+        
+        # White Level
+        self._create_adjustment_control(parent, "White:", 3, 0, 255, self.white_var,
+                                      white_handlers, self.reset_white_level, resolution=1)
+    
+    def _setup_basic_adjustments(self, parent: ttk.Frame) -> None:
+        """Set up the basic adjustments section."""
+        # Basic Adjustments Section
+        basic_label = ttk.Label(parent, text="Basic Adjustments", font=UIConstants.SECTION_FONT)
+        basic_label.grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=(15, 5))
+        
+        # Create handlers for basic adjustments
+        brightness_handlers = self._create_adjustment_handler('brightness', self.brightness_var)
+        contrast_handlers = self._create_adjustment_handler('contrast', self.contrast_var)
+        
+        # Brightness
+        self._create_adjustment_control(parent, "Brightness:", 5, -100, 100, self.brightness_var,
+                                      brightness_handlers, self.reset_brightness, resolution=1)
+        
+        # Contrast
+        self._create_adjustment_control(parent, "Contrast:", 6, -100, 100, self.contrast_var,
+                                      contrast_handlers, self.reset_contrast, resolution=1)
+    
+    def _create_adjustment_control(self, parent: ttk.Frame, label: str, row: int, 
+                                 min_val: float, max_val: float, var_obj: tk.Variable,
+                                 handlers: Dict[str, Callable], reset_func: Callable,
+                                 resolution: float = 1, format_str: str = None, increment: float = None) -> None:
+        """Create a standardized adjustment control with slider, spinbox, and reset button."""
+        ttk.Label(parent, text=label).grid(row=row, column=0, sticky=tk.W)
+        
+        control_frame = ttk.Frame(parent)
+        control_frame.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+        control_frame.columnconfigure(0, weight=1)
+        
+        # Slider
+        slider = tk.Scale(control_frame, from_=min_val, to=max_val, variable=var_obj,
+                         orient=tk.HORIZONTAL, command=handlers['slider'],
+                         resolution=resolution, showvalue=0, length=100)
+        slider.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        
+        # Spinbox
+        spinbox_kwargs = {
+            'from_': min_val,
+            'to': max_val,
+            'textvariable': var_obj,
+            'width': 5,
+            'command': handlers['spinbox']
+        }
+        if increment:
+            spinbox_kwargs['increment'] = increment
+        if format_str:
+            spinbox_kwargs['format'] = format_str
+            
+        spinbox = ttk.Spinbox(control_frame, **spinbox_kwargs)
+        spinbox.grid(row=0, column=1)
+        spinbox.bind('<Return>', handlers['enter'])
+        
+        # Reset button
+        ttk.Button(parent, text="↺", command=reset_func, width=3).grid(row=row, column=2)
+    
+    def _setup_controls_section(self, parent: ttk.Frame) -> None:
+        """Set up the controls section."""
         # Section 3: Controls (right part of ASCII viewer width - column 3)
-        controls_frame = ttk.LabelFrame(main_frame, text="Controls", padding="5")
+        controls_frame = ttk.LabelFrame(parent, text="Controls", padding="5")
         controls_frame.grid(row=1, column=3, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(2, 0), pady=(0, 10))
         
         # ASCII Width
@@ -273,14 +360,14 @@ class ASCIIPainter:
         invert_checkbox = ttk.Checkbutton(controls_frame, text="Invert Colors", 
                                          variable=self.invert_var, command=self.on_invert_change)
         invert_checkbox.grid(row=6, column=0, sticky=tk.W)
-        
-        # === MIDDLE ROW - 2 EQUAL COLUMNS (VIEWERS) ===
-        
+    
+    def _setup_viewer_sections(self, parent: ttk.Frame) -> None:
+        """Set up the image and ASCII viewer sections."""
         # Add a 4th column for proper 1:1 viewer layout
-        main_frame.columnconfigure(3, weight=1)  # Add 4th column same weight as column 0
+        parent.columnconfigure(3, weight=1)  # Add 4th column same weight as column 0
         
         # Image display frame (left side) - spans only columns 0-1 (1.5 width total)
-        image_frame = ttk.LabelFrame(main_frame, text="Original Image", padding="10")
+        image_frame = ttk.LabelFrame(parent, text="Original Image", padding="10")
         image_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 2))
         image_frame.columnconfigure(0, weight=1)
         image_frame.rowconfigure(0, weight=1)
@@ -297,24 +384,24 @@ class ASCIIPainter:
         image_h_scrollbar.grid(row=1, column=0, sticky=(tk.W, tk.E))
         
         # ASCII display frame (right side) - spans columns 2-3 (1.5 width total)
-        ascii_frame = ttk.LabelFrame(main_frame, text="ASCII Art", padding="10")
+        ascii_frame = ttk.LabelFrame(parent, text="ASCII Art", padding="10")
         ascii_frame.grid(row=2, column=2, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(2, 0))
         ascii_frame.columnconfigure(0, weight=1)
         ascii_frame.rowconfigure(0, weight=1)
         
         # ASCII text display
         self.ascii_display = scrolledtext.ScrolledText(ascii_frame, 
-                                                      font=('Courier', self.ascii_font_size),
+                                                      font=(UIConstants.ASCII_FONT, self.ascii_font_size),
                                                       wrap=tk.NONE,
                                                       state='disabled',
                                                       width=1,
                                                       height=1)
         self.ascii_display.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
-        # === BOTTOM ROW - 2 COLUMNS (CONTROLS) ===
-        
+    
+    def _setup_control_buttons(self, parent: ttk.Frame) -> None:
+        """Set up the control button sections."""
         # Image Controls (left) - spans columns 0-1
-        image_controls = ttk.Frame(main_frame, padding="5")
+        image_controls = ttk.Frame(parent, padding="5")
         image_controls.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=(0, 2), pady=(5, 0))
         
         ttk.Button(image_controls, text="Select Image", command=self.select_image).grid(row=0, column=0, padx=(0, 10))
@@ -323,7 +410,7 @@ class ASCIIPainter:
         ttk.Button(image_controls, text="Reset", command=self.reset_image_zoom, width=6).grid(row=0, column=3)
         
         # ASCII Controls (right) - spans columns 2-3
-        ascii_controls = ttk.Frame(main_frame, padding="5")
+        ascii_controls = ttk.Frame(parent, padding="5")
         ascii_controls.grid(row=3, column=2, columnspan=2, sticky=(tk.W, tk.E), padx=(2, 0), pady=(5, 0))
         
         self.save_btn = ttk.Button(ascii_controls, text="Save ASCII", command=self.save_ascii, state='disabled')
@@ -336,7 +423,8 @@ class ASCIIPainter:
         ttk.Button(ascii_controls, text="Out", command=self.zoom_out_ascii, width=4).grid(row=0, column=3, padx=(0, 2))
         ttk.Button(ascii_controls, text="Reset", command=self.reset_ascii_zoom, width=6).grid(row=0, column=4)
     
-    def update_histogram(self, image):
+    @handle_errors
+    def update_histogram(self, image: Optional[Image.Image]) -> None:
         """Update the histogram display"""
         self.hist_canvas.delete("all")
         
@@ -351,12 +439,12 @@ class ASCIIPainter:
         if canvas_height <= 1:
             canvas_height = 150
             
-        margin = 20
+        margin = UIConstants.HIST_MARGIN
         
         if image is not None:
             # Convert to grayscale and get histogram
             gray_image = ImageOps.grayscale(image)
-            hist, bins = np.histogram(np.array(gray_image), bins=64, range=(0, 256))  # 64 bins for simplicity
+            hist, bins = np.histogram(np.array(gray_image), bins=UIConstants.HIST_BINS, range=(0, 256))
             
             if max(hist) > 0:
                 # Normalize histogram to fit canvas
@@ -374,21 +462,21 @@ class ASCIIPainter:
                     self.hist_canvas.create_rectangle(x1, y1, x2, y2, fill='gray', outline='gray')
                 
                 # Draw grid lines
-                for i in range(5):  # 5 horizontal grid lines
-                    y = margin + i * (canvas_height - 2 * margin) / 4
+                for i in range(UIConstants.HIST_GRID_LINES):  # horizontal grid lines
+                    y = margin + i * (canvas_height - 2 * margin) / (UIConstants.HIST_GRID_LINES - 1)
                     self.hist_canvas.create_line(margin, y, canvas_width - margin, y, fill='lightgray', width=1)
                 
-                for i in range(5):  # 5 vertical grid lines
-                    x = margin + i * (canvas_width - 2 * margin) / 4
+                for i in range(UIConstants.HIST_GRID_LINES):  # vertical grid lines
+                    x = margin + i * (canvas_width - 2 * margin) / (UIConstants.HIST_GRID_LINES - 1)
                     self.hist_canvas.create_line(x, margin, x, canvas_height - margin, fill='lightgray', width=1)
                 
                 # Add labels
-                self.hist_canvas.create_text(canvas_width//2, canvas_height - 5, text="Pixel Values (0-255)", font=('Arial', 8))
-                self.hist_canvas.create_text(10, canvas_height//2, text="Count", font=('Arial', 8), angle=90)
+                self.hist_canvas.create_text(canvas_width//2, canvas_height - 5, text="Pixel Values (0-255)", font=UIConstants.HIST_FONT)
+                self.hist_canvas.create_text(10, canvas_height//2, text="Count", font=UIConstants.HIST_FONT, angle=90)
                 
                 # Add value labels
-                self.hist_canvas.create_text(margin, canvas_height - margin + 10, text="0", font=('Arial', 7))
-                self.hist_canvas.create_text(canvas_width - margin, canvas_height - margin + 10, text="255", font=('Arial', 7))
+                self.hist_canvas.create_text(margin, canvas_height - margin + 10, text="0", font=UIConstants.LABEL_FONT)
+                self.hist_canvas.create_text(canvas_width - margin, canvas_height - margin + 10, text="255", font=UIConstants.LABEL_FONT)
         else:
             # Empty histogram message
             self.hist_canvas.create_text(canvas_width//2, canvas_height//2, text="No Image", 
@@ -457,17 +545,17 @@ class ASCIIPainter:
         width, height = image.size
         
         # Calculate optimal size based on ASCII output requirements
-        # ASCII art typically maxes out at 200 characters wide (our slider max)
+        # ASCII art typically maxes out at MAX_ASCII_WIDTH characters wide (our slider max)
         # So we never need more than ~4x this resolution for quality
-        max_ascii_width = 200
-        optimal_pixel_width = max_ascii_width * 4  # 800px max width
+        max_ascii_width = UIConstants.MAX_ASCII_WIDTH
+        optimal_pixel_width = max_ascii_width * UIConstants.OPTIMAL_PIXEL_MULTIPLIER
         
         # For height, maintain aspect ratio but cap at reasonable size
         aspect_ratio = height / width
         optimal_pixel_height = int(optimal_pixel_width * aspect_ratio)
         
         # Cap height to prevent extremely tall images from being too large
-        max_pixel_height = 1200
+        max_pixel_height = UIConstants.MAX_PIXEL_HEIGHT
         if optimal_pixel_height > max_pixel_height:
             optimal_pixel_height = max_pixel_height
             optimal_pixel_width = int(max_pixel_height / aspect_ratio)
@@ -510,9 +598,9 @@ class ASCIIPainter:
             self.save_btn.config(state='normal')
             self.copy_btn.config(state='normal')
             
-        except Exception:
-            # Silently handle conversion errors
-            pass
+        except Exception as e:
+            logger.error(f"Failed to convert image to ASCII: {str(e)}")
+            messagebox.showerror("Conversion Error", f"Failed to convert image to ASCII: {str(e)}")
     
     def image_to_ascii(self, image, width=80):
         """Convert PIL Image to ASCII art"""
@@ -521,9 +609,9 @@ class ASCIIPainter:
         
         # Calculate height to maintain aspect ratio
         aspect_ratio = adjusted_image.height / adjusted_image.width
-        # Apply character height compensation (0.55) and user's aspect ratio percentage
-        # UI shows 100% = "normal", but internally applies 0.55 base compensation
-        height = int(width * aspect_ratio * 0.55 * (self.aspect_ratio / 100))
+        # Apply character height compensation and user's aspect ratio percentage
+        # UI shows 100% = "normal", but internally applies base compensation
+        height = int(width * aspect_ratio * UIConstants.CHAR_HEIGHT_COMPENSATION * (self.aspect_ratio / 100))
         
         # Resize image
         resized = adjusted_image.resize((width, height))
@@ -577,14 +665,16 @@ class ASCIIPainter:
         self.root.clipboard_append(self.ascii_text)
         messagebox.showinfo("Success", "ASCII art copied to clipboard!")
     
-    def zoom_in_image(self):
+    @handle_errors
+    def zoom_in_image(self) -> None:
         """Zoom in on the original image"""
-        self.image_zoom *= 1.2
+        self.image_zoom *= UIConstants.ZOOM_FACTOR
         self.update_image_display()
     
-    def zoom_out_image(self):
+    @handle_errors
+    def zoom_out_image(self) -> None:
         """Zoom out on the original image"""
-        self.image_zoom /= 1.2
+        self.image_zoom /= UIConstants.ZOOM_FACTOR
         self.update_image_display()
     
     def reset_image_zoom(self):
@@ -598,8 +688,8 @@ class ASCIIPainter:
             return
         
         try:
-            # Calculate display size with zoom (base size 400px, then apply zoom)
-            base_size = 400
+            # Calculate display size with zoom (base size then apply zoom)
+            base_size = UIConstants.BASE_IMAGE_SIZE
             max_size = int(base_size * self.image_zoom)
             display_image = self.original_image.copy()
             
@@ -647,21 +737,24 @@ class ASCIIPainter:
                 anchor='center'
             )
     
-    def zoom_in_ascii(self):
+    @handle_errors
+    def zoom_in_ascii(self) -> None:
         """Zoom in on the ASCII art"""
-        self.ascii_font_size = min(self.ascii_font_size + 2, 24)
+        self.ascii_font_size = min(self.ascii_font_size + 2, UIConstants.MAX_FONT_SIZE)
         self.update_ascii_display()
         self.save_preferences()
     
-    def zoom_out_ascii(self):
+    @handle_errors
+    def zoom_out_ascii(self) -> None:
         """Zoom out on the ASCII art"""
-        self.ascii_font_size = max(self.ascii_font_size - 2, 4)
+        self.ascii_font_size = max(self.ascii_font_size - 2, UIConstants.MIN_FONT_SIZE)
         self.update_ascii_display()
         self.save_preferences()
     
-    def reset_ascii_zoom(self):
+    @handle_errors
+    def reset_ascii_zoom(self) -> None:
         """Reset ASCII zoom to original size"""
-        self.ascii_font_size = 8
+        self.ascii_font_size = UIConstants.DEFAULT_FONT_SIZE
         self.update_ascii_display()
         self.save_preferences()
     
@@ -671,7 +764,7 @@ class ASCIIPainter:
             return
         
         # Update font size only, preserving content and layout
-        self.ascii_display.config(font=('Courier', self.ascii_font_size))
+        self.ascii_display.config(font=(UIConstants.ASCII_FONT, self.ascii_font_size))
     
     def on_ascii_mode_change(self, event=None):
         """Handle ASCII mode selection change"""
@@ -739,127 +832,7 @@ class ASCIIPainter:
         if self.original_image:
             self.convert_to_ascii()
     
-    # Image adjustment callbacks
-    def on_black_change(self, value):
-        """Handle black level change"""
-        self.black_level = self.black_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_white_change(self, value):
-        """Handle white level change"""
-        self.white_level = self.white_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_gamma_change(self, value):
-        """Handle gamma change"""
-        self.gamma = self.gamma_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_brightness_change(self, value):
-        """Handle brightness change"""
-        self.brightness = self.brightness_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_contrast_change(self, value):
-        """Handle contrast change"""
-        self.contrast = self.contrast_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    # Spinbox and Enter key methods for all adjustments
-    def on_black_spinbox_change(self):
-        """Handle black level spinbox up/down arrows"""
-        self.black_level = self.black_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_black_enter(self, event):
-        """Handle Enter key in black level spinbox"""
-        self.black_level = self.black_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_gamma_spinbox_change(self):
-        """Handle gamma spinbox up/down arrows"""
-        self.gamma = self.gamma_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_gamma_enter(self, event):
-        """Handle Enter key in gamma spinbox"""
-        self.gamma = self.gamma_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_white_spinbox_change(self):
-        """Handle white level spinbox up/down arrows"""
-        self.white_level = self.white_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_white_enter(self, event):
-        """Handle Enter key in white level spinbox"""
-        self.white_level = self.white_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_brightness_spinbox_change(self):
-        """Handle brightness spinbox up/down arrows"""
-        self.brightness = self.brightness_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_brightness_enter(self, event):
-        """Handle Enter key in brightness spinbox"""
-        self.brightness = self.brightness_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_contrast_spinbox_change(self):
-        """Handle contrast spinbox up/down arrows"""
-        self.contrast = self.contrast_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
-    
-    def on_contrast_enter(self, event):
-        """Handle Enter key in contrast spinbox"""
-        self.contrast = self.contrast_var.get()
-        self.save_preferences()
-        if self.original_image:
-            self.update_histogram(self.apply_adjustments(self.original_image))
-            self.convert_to_ascii()
+    # Note: Image adjustment handlers are now consolidated in the _create_adjustment_handler method
     
     # Reset methods for adjustments
     def reset_black_level(self):
@@ -981,9 +954,12 @@ class ASCIIPainter:
                 self.brightness = config.get('brightness', 0)
                 self.contrast = config.get('contrast', 0)
                 self.ascii_chars = self.ascii_sets.get(self.current_ascii_set, self.ascii_sets['16-Level Alternative (Smoother)'])
-        except (FileNotFoundError, json.JSONDecodeError):
-            # Use defaults if no config file or corrupted file
-            pass
+        except FileNotFoundError:
+            logger.info("No config file found, using defaults")
+        except json.JSONDecodeError as e:
+            logger.warning(f"Corrupted config file, using defaults: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected error loading preferences: {str(e)}")
     
     def save_preferences(self):
         """Save user preferences to config file"""
@@ -1002,8 +978,8 @@ class ASCIIPainter:
             with open('ascii_painter_config.json', 'w') as f:
                 json.dump(config, f, indent=2)
         except Exception as e:
-            # Silently fail if can't save preferences
-            pass
+            logger.warning(f"Failed to save preferences: {str(e)}")
+            # Don't show error dialog for preferences - non-critical
 
 def main():
     root = tk.Tk()

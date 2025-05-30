@@ -1,156 +1,136 @@
-# ASCII Painter
+# ASCII Painter 🎨
 
-A graphical tool that converts images into ASCII character art with advanced features and intuitive controls.
+Transform your photos into stunning ASCII art with professional-grade image controls and real-time preview!
 
-## Features
+![ASCII Painter Screenshot](https://via.placeholder.com/800x600/f0f0f0/333333?text=ASCII+Painter+Screenshot)
 
-- 🖼️ **Multi-format Support**: Supports PNG, JPG, JPEG, GIF, BMP, TIFF, WebP image formats
-- 🎨 **Real-time Conversion**: Automatic ASCII conversion upon image selection
-- 📐 **Side-by-side View**: Original image and ASCII art displayed simultaneously (1:1 aspect ratio)
-- 🎯 **Interactive Controls**: Real-time sliders and spinboxes for precise adjustment
-- 🔤 **Multiple ASCII Character Sets**: 7 different character sets including Unicode options
-- 🔍 **Zoom Controls**: Independent zoom for both image and ASCII art viewers
-- 💾 **Export Options**: Save to file or copy to clipboard
-- 📊 **Real-time Histogram**: Live grayscale histogram with grid lines and value labels
-- 🎛️ **Professional Image Adjustments**: Photoshop-style levels and basic adjustments
-- 🚀 **Intelligent Optimization**: Automatic image downsizing for faster performance
-- ⚡ **Smart Preferences**: Automatically saves and restores all your settings
+## ✨ What is ASCII Painter?
 
-## ASCII Character Sets
+ASCII Painter is an easy-to-use desktop application that converts your images into beautiful text art. Whether you want to create retro-style artwork, add a unique touch to your projects, or just have fun with your photos, ASCII Painter makes it simple and enjoyable.
 
-Choose from 7 carefully designed character sets:
+## 🚀 Quick Start
 
-1. **8-Level Minimalist (Classic)**: ` .:-=+*#%@`
-2. **10-Level Coarse (Balanced)**: ` .'`^:!|#@`
-3. **16-Level Alternative (Smoother)**: ` .'`^\":;Il!i~+*#%` (Default)
-4. **Unicode Blocks**: ` ░▒▓█`
-5. **Unicode Dot Patterns**: ` ⠀⠄⠆⠇⠿⣿`
-6. **Unicode Mixed Symbols**: ` ·∘○●◉█`
-7. **Unicode Shade Blocks**: ` ▁▂▃▄▅▆▇█`
-
-## Requirements
-
-- Python 3.8 or higher
-- UV package manager (recommended) or pip
-
-## Installation & Usage
-
-### Using UV (Recommended)
-
-1. **Clone and navigate to the project**:
-   ```bash
-   git clone https://github.com/Dipteris/ascii_painter.git
-   cd ascii_painter
-   ```
-
-2. **Run directly with UV**:
-   ```bash
-   uv run main.py
-   ```
-
-### Alternative Method
-
-1. **Install dependencies**:
-   ```bash
-   uv sync
-   ```
-
-2. **Run the application**:
-   ```bash
-   uv run main.py
-   ```
-
-## User Interface
-
-The interface features a professional 3-section layout:
-
-### Top Row - Professional Controls
-- **Histogram**: Real-time grayscale histogram with grid lines (matches Original Image width)
-- **Image Adjustments**: Photoshop-style levels and basic adjustments with individual reset buttons
-- **Controls**: ASCII width, aspect ratio, mode selection, and invert colors
-
-### Middle Row - 1:1 Viewers
-- **Original Image**: Displays the selected image with zoom capability (left side)
-- **ASCII Art**: Shows the converted ASCII art with font size controls (right side)
-
-### Bottom Row - Action Controls
-- **Image Controls**: Select Image, zoom In/Out/Reset for the original image
-- **ASCII Controls**: Save ASCII, Copy to Clipboard, font size In/Out/Reset
-
-## How to Use
-
-1. **Select an Image**: Click "Select Image" to choose your image file
-2. **Auto-conversion**: ASCII art generates automatically upon selection with intelligent optimization
-3. **Adjust Parameters**: 
-   - **Width & Aspect Ratio**: Drag sliders, use spinbox arrows, or type exact values + Enter
-   - **Image Adjustments**: Fine-tune levels (Black, Gamma, White) and basic adjustments (Brightness, Contrast)
-   - **ASCII Style**: Select from 7 different character sets
-   - **Invert Colors**: Toggle between normal and inverted brightness mapping
-4. **Monitor Histogram**: Watch real-time pixel distribution changes as you adjust settings
-5. **Zoom Views**: Use controls below each viewer to zoom in/out independently
-6. **Export**: Save to file or copy to clipboard when satisfied
-
-## Technical Details
-
-### Intelligent Image Processing
-- **Smart Optimization**: Automatically downsizes large images (max 800px width) for faster performance while preserving ASCII quality
-- **High-Quality Resampling**: Uses LANCZOS algorithm to maintain detail during resizing
-- **Adaptive Processing**: Skips unnecessary adjustments when values are at defaults
-- **Aspect Ratio Control**: User-adjustable aspect ratio with 100% = no distortion, 55% = character compensation
-
-### Professional Image Adjustments
-- **Levels Control**: Black level (0-255), Gamma (0.1-3.0), White level (0-255)
-- **Basic Adjustments**: Brightness (-100 to +100), Contrast (-100 to +100)
-- **Real-time Histogram**: Live pixel distribution visualization with grid lines
-- **Invert Colors**: Toggle between normal and inverted brightness mapping
-
-### Conversion Algorithm
-- Maintains aspect ratio during resizing
-- Converts to grayscale for optimal character mapping
-- Maps pixel brightness to character density
-- Applies user-adjustable character height compensation
-
-### Advanced Features
-- **Real-time Everything**: Instant feedback on all parameter changes with live histogram updates
-- **Multiple Input Methods**: Sliders, spinboxes with up/down arrows, and direct text entry
-- **Preference Persistence**: All settings saved in `ascii_painter_config.json`
-- **Unicode Support**: Modern character sets for enhanced visual quality
-- **Responsive Interface**: Professional layout with 1:1 viewer ratio and adaptive histogram sizing
-
-## Project Structure
-
-```
-ascii_painter/
-├── main.py                    # Main application file
-├── pyproject.toml            # UV project configuration
-├── uv.lock                   # Dependency lock file
-├── ascii_painter_config.json # User preferences (auto-generated)
-└── README.md                 # This file
+### Option 1: One-Click Launch (Recommended)
+```bash
+git clone https://github.com/Dipteris/ascii_painter.git
+cd ascii_painter
+uv run main.py
 ```
 
-## Configuration
+### Option 2: Install and Run
+```bash
+git clone https://github.com/Dipteris/ascii_painter.git
+cd ascii_painter
+uv sync
+uv run main.py
+```
 
-The application automatically saves all your preferences:
-- ASCII character set selection
-- Image adjustments (levels, brightness, contrast)
-- Aspect ratio and invert colors settings
-- Font size for ASCII display
-- All settings persist between sessions and are stored in `ascii_painter_config.json`
+**Requirements**: Python 3.8+ and [UV package manager](https://docs.astral.sh/uv/getting-started/installation/)
 
-## System Compatibility
+## 🎯 How to Use
 
-- **macOS**: Full support with native UI elements
-- **Windows**: Compatible with all features
-- **Linux**: Full functionality with tkinter support
+### Step 1: Load Your Image
+Click **"Select Image"** and choose any photo from your computer. ASCII Painter supports all common formats: PNG, JPG, GIF, BMP, TIFF, and WebP.
 
-## License
+### Step 2: Customize Your Art
+- **Choose Style**: Pick from 7 different ASCII character sets (classic symbols to modern Unicode)
+- **Adjust Size**: Use the width slider to make your art bigger or smaller
+- **Fine-tune Look**: Adjust brightness, contrast, and other image settings
+- **Perfect Proportions**: Use the aspect ratio control to get the perfect shape
 
-This project is licensed under the MIT License.
+### Step 3: Watch the Magic
+Your ASCII art updates instantly as you make changes! The live histogram shows you how your adjustments affect the image.
 
-## Contributing
+### Step 4: Save Your Creation
+- **Save to File**: Export as a text file to share or use later
+- **Copy to Clipboard**: Paste directly into documents, social media, or anywhere you want
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+## 🎨 Character Styles
+
+Choose the perfect style for your art:
+
+| Style | Characters | Best For |
+|-------|------------|----------|
+| **Classic** | ` .:-=+*#%@` | Traditional ASCII art |
+| **Smooth** | ` .'`^\":;Il!i~+*#%` | Detailed images (Default) |
+| **Blocks** | ` ░▒▓█` | Bold, modern look |
+| **Dots** | ` ⠀⠄⠆⠇⠿⣿` | Unique dotted effect |
+| **Symbols** | ` ·∘○●◉█` | Artistic circles |
+| **Shade Blocks** | ` ▁▂▃▄▅▆▇█` | Gradient effects |
+
+## 🎛️ Professional Controls
+
+### Image Adjustments
+- **Brightness & Contrast**: Make your image pop
+- **Levels Control**: Fine-tune shadows, midtones, and highlights like Photoshop
+- **Real-time Histogram**: See exactly how your changes affect the image
+- **Invert Colors**: Flip black and white for different effects
+
+### Smart Features
+- **Auto-Optimization**: Large images are automatically resized for faster processing
+- **Memory**: All your settings are remembered between sessions
+- **Zoom**: Independently zoom your original image and ASCII art
+- **Multiple Input**: Use sliders, type exact numbers, or use arrow buttons
+
+## 🖥️ Interface Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  📊 Histogram    🎛️ Adjustments     ⚙️ Controls       │
+├─────────────────────────────────────────────────────────┤
+│  🖼️ Original Image              📝 ASCII Art          │
+├─────────────────────────────────────────────────────────┤
+│  🔧 Image Controls              💾 Export Controls      │
+└─────────────────────────────────────────────────────────┘
+```
+
+## 💡 Tips for Best Results
+
+- **Start Simple**: Begin with the default settings and adjust from there
+- **Try Different Styles**: Each character set creates a unique artistic effect
+- **Use Contrast**: High-contrast images often produce the most striking ASCII art
+- **Experiment with Size**: Larger width values capture more detail
+- **Check the Histogram**: A good spread across the histogram usually means better ASCII art
+
+## 🔧 Troubleshooting
+
+**App won't start?**
+- Make sure you have Python 3.8+ installed
+- Install UV: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+**Image looks wrong?**
+- Try adjusting the aspect ratio slider
+- Use the "Reset All" button to start over
+- Check if "Invert Colors" should be toggled
+
+**ASCII art too small/large?**
+- Use the width slider to adjust size
+- Use font zoom controls (In/Out/Reset) to change text size
+
+## 🌟 What Makes ASCII Painter Special
+
+- **Real-time Preview**: See changes instantly as you adjust settings
+- **Professional Quality**: Advanced image processing algorithms for the best results
+- **User-Friendly**: No technical knowledge required - just point, click, and create
+- **Lightning Fast**: Optimized for performance even with large images
+- **Cross-Platform**: Works on Windows, macOS, and Linux
+
+## 📁 Your Files
+
+ASCII Painter creates these files:
+- `ascii_painter_config.json` - Saves your preferences (you can delete this to reset)
+- Your exported ASCII art files (wherever you choose to save them)
+
+## 🤝 Get Help & Contribute
+
+- **Questions?** Open an issue on [GitHub](https://github.com/Dipteris/ascii_painter/issues)
+- **Ideas?** We'd love to hear your suggestions!
+- **Want to Help?** Contributions are always welcome
+
+## 📄 License
+
+MIT License - Use it however you want!
 
 ---
 
-**ASCII Painter** - Transform your images into unique text art with professional-grade image adjustments, real-time histogram visualization, and lightning-fast performance optimization!
+**Ready to create amazing ASCII art?** [Download ASCII Painter](https://github.com/Dipteris/ascii_painter) and start transforming your images today! 🚀
