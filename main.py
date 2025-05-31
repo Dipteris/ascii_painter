@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # UI Constants
 class UIConstants:
     """Constants for UI layout and behavior"""
-    WINDOW_SIZE = "1200x800"
+    WINDOW_SIZE = "1500x1000"
     WINDOW_BG = '#f0f0f0'
     TITLE_FONT = ('Arial', 16, 'bold')
     SECTION_FONT = ('Arial', 9, 'bold')
@@ -403,15 +403,36 @@ class ASCIIPainter:
         # Image Controls (left) - spans columns 0-1
         image_controls = ttk.Frame(parent, padding="5")
         image_controls.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=(0, 2), pady=(5, 0))
+        image_controls.columnconfigure(2, weight=1)
         
         ttk.Button(image_controls, text="Select Image", command=self.select_image).grid(row=0, column=0, padx=(0, 10))
-        ttk.Button(image_controls, text="In", command=self.zoom_in_image, width=4).grid(row=0, column=1, padx=(0, 2))
-        ttk.Button(image_controls, text="Out", command=self.zoom_out_image, width=4).grid(row=0, column=2, padx=(0, 2))
-        ttk.Button(image_controls, text="Reset", command=self.reset_image_zoom, width=6).grid(row=0, column=3)
+        
+        # Image Zoom Control
+        ttk.Label(image_controls, text="Zoom:").grid(row=0, column=1, sticky=tk.W, padx=(0, 5))
+        
+        zoom_frame = ttk.Frame(image_controls)
+        zoom_frame.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=(0, 5))
+        zoom_frame.columnconfigure(0, weight=1)
+        
+        self.image_zoom_var = tk.DoubleVar(value=self.image_zoom)
+        image_zoom_slider = tk.Scale(zoom_frame, from_=0.1, to=5.0, variable=self.image_zoom_var,
+                                   orient=tk.HORIZONTAL, command=self.on_image_zoom_change,
+                                   resolution=0.1, showvalue=0)
+        image_zoom_slider.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        
+        image_zoom_spinbox = ttk.Spinbox(zoom_frame, from_=0.1, to=5.0, 
+                                       textvariable=self.image_zoom_var, width=5,
+                                       command=self.on_image_zoom_spinbox_change,
+                                       increment=0.1, format="%.1f")
+        image_zoom_spinbox.grid(row=0, column=1)
+        image_zoom_spinbox.bind('<Return>', self.on_image_zoom_enter)
+        
+        ttk.Button(image_controls, text="↺", command=self.reset_image_zoom, width=3).grid(row=0, column=3)
         
         # ASCII Controls (right) - spans columns 2-3
         ascii_controls = ttk.Frame(parent, padding="5")
         ascii_controls.grid(row=3, column=2, columnspan=2, sticky=(tk.W, tk.E), padx=(2, 0), pady=(5, 0))
+        ascii_controls.columnconfigure(3, weight=1)
         
         self.save_btn = ttk.Button(ascii_controls, text="Save ASCII", command=self.save_ascii, state='disabled')
         self.save_btn.grid(row=0, column=0, padx=(0, 5))
@@ -419,9 +440,26 @@ class ASCIIPainter:
         self.copy_btn = ttk.Button(ascii_controls, text="Copy to Clipboard", command=self.copy_to_clipboard, state='disabled')
         self.copy_btn.grid(row=0, column=1, padx=(0, 10))
         
-        ttk.Button(ascii_controls, text="In", command=self.zoom_in_ascii, width=4).grid(row=0, column=2, padx=(0, 2))
-        ttk.Button(ascii_controls, text="Out", command=self.zoom_out_ascii, width=4).grid(row=0, column=3, padx=(0, 2))
-        ttk.Button(ascii_controls, text="Reset", command=self.reset_ascii_zoom, width=6).grid(row=0, column=4)
+        # ASCII Font Size Control
+        ttk.Label(ascii_controls, text="Font:").grid(row=0, column=2, sticky=tk.W, padx=(0, 5))
+        
+        font_frame = ttk.Frame(ascii_controls)
+        font_frame.grid(row=0, column=3, sticky=(tk.W, tk.E), padx=(0, 5))
+        font_frame.columnconfigure(0, weight=1)
+        
+        self.ascii_font_var = tk.IntVar(value=self.ascii_font_size)
+        ascii_font_slider = tk.Scale(font_frame, from_=UIConstants.MIN_FONT_SIZE, to=UIConstants.MAX_FONT_SIZE, 
+                                   variable=self.ascii_font_var, orient=tk.HORIZONTAL, 
+                                   command=self.on_ascii_font_change, resolution=1, showvalue=0)
+        ascii_font_slider.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        
+        ascii_font_spinbox = ttk.Spinbox(font_frame, from_=UIConstants.MIN_FONT_SIZE, to=UIConstants.MAX_FONT_SIZE,
+                                       textvariable=self.ascii_font_var, width=3,
+                                       command=self.on_ascii_font_spinbox_change)
+        ascii_font_spinbox.grid(row=0, column=1)
+        ascii_font_spinbox.bind('<Return>', self.on_ascii_font_enter)
+        
+        ttk.Button(ascii_controls, text="↺", command=self.reset_ascii_zoom, width=3).grid(row=0, column=4)
     
     @handle_errors
     def update_histogram(self, image: Optional[Image.Image]) -> None:
@@ -519,6 +557,9 @@ class ASCIIPainter:
     def load_image(self, filepath):
         """Load and display the selected image"""
         raw_image = Image.open(filepath)
+        
+        # Apply EXIF orientation to fix rotated images
+        raw_image = ImageOps.exif_transpose(raw_image)
         
         # Convert to RGB if necessary
         if raw_image.mode != 'RGB':
@@ -665,21 +706,25 @@ class ASCIIPainter:
         self.root.clipboard_append(self.ascii_text)
         messagebox.showinfo("Success", "ASCII art copied to clipboard!")
     
-    @handle_errors
-    def zoom_in_image(self) -> None:
-        """Zoom in on the original image"""
-        self.image_zoom *= UIConstants.ZOOM_FACTOR
+    def on_image_zoom_change(self, value):
+        """Handle image zoom slider movement"""
+        self.image_zoom = self.image_zoom_var.get()
         self.update_image_display()
     
-    @handle_errors
-    def zoom_out_image(self) -> None:
-        """Zoom out on the original image"""
-        self.image_zoom /= UIConstants.ZOOM_FACTOR
+    def on_image_zoom_spinbox_change(self):
+        """Handle image zoom spinbox change"""
+        self.image_zoom = self.image_zoom_var.get()
+        self.update_image_display()
+    
+    def on_image_zoom_enter(self, event):
+        """Handle Enter key in image zoom spinbox"""
+        self.image_zoom = self.image_zoom_var.get()
         self.update_image_display()
     
     def reset_image_zoom(self):
         """Reset image zoom to original size"""
         self.image_zoom = 1.0
+        self.image_zoom_var.set(1.0)
         self.update_image_display()
     
     def update_image_display(self):
@@ -737,17 +782,21 @@ class ASCIIPainter:
                 anchor='center'
             )
     
-    @handle_errors
-    def zoom_in_ascii(self) -> None:
-        """Zoom in on the ASCII art"""
-        self.ascii_font_size = min(self.ascii_font_size + 2, UIConstants.MAX_FONT_SIZE)
+    def on_ascii_font_change(self, value):
+        """Handle ASCII font size slider movement"""
+        self.ascii_font_size = self.ascii_font_var.get()
         self.update_ascii_display()
         self.save_preferences()
     
-    @handle_errors
-    def zoom_out_ascii(self) -> None:
-        """Zoom out on the ASCII art"""
-        self.ascii_font_size = max(self.ascii_font_size - 2, UIConstants.MIN_FONT_SIZE)
+    def on_ascii_font_spinbox_change(self):
+        """Handle ASCII font size spinbox change"""
+        self.ascii_font_size = self.ascii_font_var.get()
+        self.update_ascii_display()
+        self.save_preferences()
+    
+    def on_ascii_font_enter(self, event):
+        """Handle Enter key in ASCII font size spinbox"""
+        self.ascii_font_size = self.ascii_font_var.get()
         self.update_ascii_display()
         self.save_preferences()
     
@@ -755,6 +804,7 @@ class ASCIIPainter:
     def reset_ascii_zoom(self) -> None:
         """Reset ASCII zoom to original size"""
         self.ascii_font_size = UIConstants.DEFAULT_FONT_SIZE
+        self.ascii_font_var.set(UIConstants.DEFAULT_FONT_SIZE)
         self.update_ascii_display()
         self.save_preferences()
     
