@@ -240,7 +240,7 @@ class ASCIIPainter:
         
         # Gamma
         self._create_adjustment_control(parent, "Gamma:", 2, 0.1, 3.0, self.gamma_var,
-                                      gamma_handlers, self.reset_gamma, resolution=0.1, format_str="%.1f", increment=0.1)
+                                      gamma_handlers, self.reset_gamma, resolution=0.05, format_str="%.2f", increment=0.05)
         
         # White Level
         self._create_adjustment_control(parent, "White:", 3, 0, 255, self.white_var,
