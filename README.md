@@ -2,24 +2,30 @@
 
 Transform your photos into stunning ASCII art with professional-grade image controls and real-time preview!
 
-![ASCII Painter Screenshot](https://via.placeholder.com/800x600/f0f0f0/333333?text=ASCII+Painter+Screenshot)
-
 ## ✨ What is ASCII Painter?
 
-ASCII Painter is an easy-to-use desktop application that converts your images into beautiful text art. Whether you want to create retro-style artwork, add a unique touch to your projects, or just have fun with your photos, ASCII Painter makes it simple and enjoyable.
+ASCII Painter is a powerful desktop application that converts your images into beautiful text art. Whether you want to create retro-style artwork, add a unique touch to your projects, or just have fun with your photos, ASCII Painter provides professional-grade tools that make it simple and enjoyable.
+
+**Key Features:**
+- 🎛️ **Professional Image Controls** - Levels, gamma, brightness, contrast adjustments
+- 📊 **Real-time Histogram** - See exactly how your adjustments affect the image
+- 🎨 **7 Character Styles** - From classic ASCII to modern Unicode blocks
+- ⚡ **Instant Preview** - All changes update live as you adjust settings
+- 💾 **Smart Export** - Save as text files or copy directly to clipboard
+- 🔄 **Memory** - All preferences automatically saved between sessions
 
 ## 🚀 Quick Start
 
-### Option 1: One-Click Launch (Recommended)
+### One-Click Launch (Recommended)
 ```bash
-git clone https://github.com/Dipteris/ascii_painter.git
+git clone https://github.com/yourusername/ascii_painter.git
 cd ascii_painter
 uv run main.py
 ```
 
-### Option 2: Install and Run
+### Alternative: Install Dependencies First
 ```bash
-git clone https://github.com/Dipteris/ascii_painter.git
+git clone https://github.com/yourusername/ascii_painter.git
 cd ascii_painter
 uv sync
 uv run main.py
@@ -57,20 +63,24 @@ Choose the perfect style for your art:
 | **Dots** | ` ⠀⠄⠆⠇⠿⣿` | Unique dotted effect |
 | **Symbols** | ` ·∘○●◉█` | Artistic circles |
 | **Shade Blocks** | ` ▁▂▃▄▅▆▇█` | Gradient effects |
+| **Dense** | ` .,-~:;!*+<%@#` | High detail and contrast |
 
 ## 🎛️ Professional Controls
 
-### Image Adjustments
-- **Brightness & Contrast**: Make your image pop
-- **Levels Control**: Fine-tune shadows, midtones, and highlights like Photoshop
-- **Real-time Histogram**: See exactly how your changes affect the image
-- **Invert Colors**: Flip black and white for different effects
+### Advanced Image Adjustments
+- **Levels Control**: Black level (0-254) and white level (1-255) for precise tonal control
+- **Gamma Correction**: 0.1-3.0 range with 0.01 precision for midtone adjustments
+- **Brightness & Contrast**: -100 to +100 range for fine-tuning
+- **Real-time Histogram**: 64-bin histogram with live updates and grid overlay
+- **Invert Colors**: Toggle for negative effects and artistic styles
 
-### Smart Features
-- **Auto-Optimization**: Large images are automatically resized for faster processing
-- **Memory**: All your settings are remembered between sessions
-- **Zoom**: Independently zoom your original image and ASCII art
-- **Multiple Input**: Use sliders, type exact numbers, or use arrow buttons
+### Smart Features & Performance
+- **Auto-Optimization**: Large images intelligently downscaled (max 1200px height)
+- **EXIF Orientation**: Automatic rotation correction for photos from cameras
+- **Memory System**: All 10+ settings automatically saved to config file
+- **Dual Zoom Controls**: Independent zoom for original image (0.1x-5.0x) and ASCII text (4-24px)
+- **Multiple Input Methods**: Sliders, direct number input, and increment/decrement buttons
+- **Debounced Updates**: Smooth performance during rapid adjustments
 
 ## 🖥️ Interface Overview
 
@@ -106,6 +116,27 @@ Choose the perfect style for your art:
 **ASCII art too small/large?**
 - Use the width slider to adjust size
 - Use font zoom controls (In/Out/Reset) to change text size
+
+## ⚙️ Technical Details
+
+### Architecture
+- **Single-file Application**: All functionality in one well-organized Python file (`main.py`)
+- **Dependencies**: PIL/Pillow (≥10.0.0) and NumPy (≥1.21.0) for high-performance image processing
+- **GUI Framework**: tkinter (built-in) for cross-platform desktop compatibility
+- **Configuration**: JSON-based settings with automatic persistence
+
+### Performance Optimizations
+- **Smart Image Downscaling**: Large images automatically optimized for processing speed
+- **Vectorized Operations**: NumPy arrays for efficient brightness mapping and adjustments
+- **Memory Management**: Efficient PIL image handling with proper resource cleanup
+- **Debounced UI Updates**: Prevents excessive recomputation during rapid slider adjustments
+
+### Image Processing Pipeline
+1. **Load & Orientation**: PIL with automatic EXIF orientation correction
+2. **Optimization**: Intelligent downscaling for performance (max 1200px height)
+3. **Adjustments**: Levels → Gamma → Brightness → Contrast → Inversion
+4. **ASCII Conversion**: Character mapping with height compensation (0.55 factor)
+5. **Display**: Real-time preview with zoom and scroll capabilities
 
 ## 🌟 What Makes ASCII Painter Special
 
