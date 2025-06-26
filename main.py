@@ -106,6 +106,12 @@ class ASCIIPainter:
         self.brightness = 0       # -100 to +100
         self.contrast = 0         # -100 to +100
         
+        # ASCII Paintbrush settings
+        self.ascii_paintbrush_enabled = False
+        self.brush_size = 1
+        self.brush_char = '#'  # Default to darkest character
+        self.painting = False
+        
         # Current image data
         self.original_image: Optional[Image.Image] = None
         self.ascii_text: str = ""
@@ -119,6 +125,9 @@ class ASCIIPainter:
         self.load_preferences()
         
         self.setup_ui()
+        
+        # Initialize brush character options after UI is set up
+        self.update_brush_char_options()
     
     def _create_adjustment_handler(self, attr_name: str, var_obj: tk.Variable) -> Dict[str, Callable]:
         """Create standardized handlers for adjustment controls.
@@ -182,6 +191,12 @@ class ASCIIPainter:
         self.gamma_var = tk.DoubleVar(value=self.gamma)
         self.brightness_var = tk.IntVar(value=self.brightness)
         self.contrast_var = tk.IntVar(value=self.contrast)
+        
+        # ASCII Paintbrush variables
+        self.ascii_paintbrush_var = tk.BooleanVar(value=self.ascii_paintbrush_enabled)
+        self.brush_size_var = tk.IntVar(value=self.brush_size)
+        self.brush_char_var = tk.StringVar(value=self.brush_char)
+        
         
         # Set up the three main sections
         self._setup_histogram_section(main_frame)
@@ -389,14 +404,53 @@ class ASCIIPainter:
         ascii_frame.columnconfigure(0, weight=1)
         ascii_frame.rowconfigure(0, weight=1)
         
-        # ASCII text display
-        self.ascii_display = scrolledtext.ScrolledText(ascii_frame, 
+        # Create inner frame for ASCII display and paintbrush controls
+        ascii_inner_frame = ttk.Frame(ascii_frame)
+        ascii_inner_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        ascii_inner_frame.columnconfigure(0, weight=1)
+        ascii_inner_frame.rowconfigure(0, weight=1)
+        
+        # ASCII text display (left side of inner frame)
+        self.ascii_display = scrolledtext.ScrolledText(ascii_inner_frame, 
                                                       font=(UIConstants.ASCII_FONT, self.ascii_font_size),
                                                       wrap=tk.NONE,
-                                                      state='disabled',
+                                                      state='normal',
                                                       width=1,
                                                       height=1)
-        self.ascii_display.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.ascii_display.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
+        
+        # Paintbrush controls frame (right side of inner frame)
+        paintbrush_frame = ttk.LabelFrame(ascii_inner_frame, text="ASCII Paintbrush", padding="5")
+        paintbrush_frame.grid(row=0, column=1, sticky=(tk.N, tk.S), padx=(5, 0))
+        
+        # Enable ASCII Paintbrush
+        ascii_paintbrush_checkbox = ttk.Checkbutton(paintbrush_frame, text="Enable Paintbrush", 
+                                                   variable=self.ascii_paintbrush_var, 
+                                                   command=self.on_ascii_paintbrush_toggle)
+        ascii_paintbrush_checkbox.grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
+        
+        # Brush Size
+        ttk.Label(paintbrush_frame, text="Brush Size:").grid(row=1, column=0, sticky=tk.W, pady=(5, 3))
+        brush_size_spinbox = ttk.Spinbox(paintbrush_frame, from_=1, to=5, 
+                                       textvariable=self.brush_size_var, width=3,
+                                       command=self.on_brush_size_change)
+        brush_size_spinbox.grid(row=2, column=0, sticky=tk.W, pady=(0, 5))
+        brush_size_spinbox.bind('<Return>', self.on_brush_size_enter)
+        
+        # Brush Character (from current ASCII set)
+        ttk.Label(paintbrush_frame, text="Brush Character:").grid(row=3, column=0, sticky=tk.W, pady=(5, 3))
+        self.brush_char_combo = ttk.Combobox(paintbrush_frame, textvariable=self.brush_char_var, 
+                                           width=5, state="readonly")
+        self.brush_char_combo.grid(row=4, column=0, sticky=tk.W, pady=(0, 5))
+        self.brush_char_combo.bind('<<ComboboxSelected>>', self.on_brush_char_change)
+        
+        # Reset ASCII button
+        ttk.Button(paintbrush_frame, text="Reset ASCII", command=self.reset_ascii_art).grid(row=5, column=0, pady=(10, 0))
+        
+        # Bind mouse events to ASCII display
+        self.ascii_display.bind('<Button-1>', self.start_ascii_paint)
+        self.ascii_display.bind('<B1-Motion>', self.ascii_paint_drag)
+        self.ascii_display.bind('<ButtonRelease-1>', self.stop_ascii_paint)
     
     def _setup_control_buttons(self, parent: ttk.Frame) -> None:
         """Set up the control button sections."""
@@ -633,7 +687,9 @@ class ASCIIPainter:
             self.ascii_display.config(state='normal')
             self.ascii_display.delete(1.0, tk.END)
             self.ascii_display.insert(1.0, self.ascii_text)
-            self.ascii_display.config(state='disabled')
+            # Keep editable for paintbrush functionality
+            if not self.ascii_paintbrush_enabled:
+                self.ascii_display.config(state='disabled')
             
             # Enable save and copy buttons
             self.save_btn.config(state='normal')
@@ -680,7 +736,10 @@ class ASCIIPainter:
     
     def save_ascii(self):
         """Save ASCII art to a text file"""
-        if not self.ascii_text:
+        # Get current content from display (includes paintbrush modifications)
+        current_ascii = self.ascii_display.get(1.0, tk.END).rstrip('\n')
+        
+        if not current_ascii:
             return
         
         filename = filedialog.asksaveasfilename(
@@ -692,18 +751,21 @@ class ASCIIPainter:
         if filename:
             try:
                 with open(filename, 'w', encoding='utf-8') as f:
-                    f.write(self.ascii_text)
+                    f.write(current_ascii)
                 messagebox.showinfo("Success", "ASCII art saved successfully!")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to save file: {str(e)}")
     
     def copy_to_clipboard(self):
         """Copy ASCII art to clipboard"""
-        if not self.ascii_text:
+        # Get current content from display (includes paintbrush modifications)
+        current_ascii = self.ascii_display.get(1.0, tk.END).rstrip('\n')
+        
+        if not current_ascii:
             return
         
         self.root.clipboard_clear()
-        self.root.clipboard_append(self.ascii_text)
+        self.root.clipboard_append(current_ascii)
         messagebox.showinfo("Success", "ASCII art copied to clipboard!")
     
     def on_image_zoom_change(self, value):
@@ -825,6 +887,9 @@ class ASCIIPainter:
         # Auto-convert if image is loaded
         if self.original_image:
             self.convert_to_ascii()
+        
+        # Update brush character options when ASCII mode changes
+        self.update_brush_char_options()
     
     def on_width_slider_move(self, value):
         """Handle real-time slider movement with conversion"""
@@ -1030,10 +1095,115 @@ class ASCIIPainter:
         except Exception as e:
             logger.warning(f"Failed to save preferences: {str(e)}")
             # Don't show error dialog for preferences - non-critical
+    
+    def update_brush_char_options(self):
+        """Update the brush character dropdown with current ASCII set characters"""
+        if hasattr(self, 'brush_char_combo'):
+            # Convert ASCII characters to list for combobox
+            char_list = list(self.ascii_chars)
+            self.brush_char_combo['values'] = char_list
+            
+            # Set default to darkest character (last in set)
+            if self.brush_char not in char_list:
+                self.brush_char = char_list[-1] if char_list else '#'
+                self.brush_char_var.set(self.brush_char)
+    
+    def on_ascii_paintbrush_toggle(self):
+        """Handle ASCII paintbrush enable/disable toggle"""
+        self.ascii_paintbrush_enabled = self.ascii_paintbrush_var.get()
+        
+        # Change cursor and state when paintbrush is enabled
+        if self.ascii_paintbrush_enabled:
+            self.ascii_display.config(cursor="dotbox", state='normal')
+        else:
+            self.ascii_display.config(cursor="", state='disabled' if self.ascii_text else 'normal')
+        
+        self.save_preferences()
+    
+    def on_brush_size_change(self):
+        """Handle brush size spinbox change"""
+        self.brush_size = self.brush_size_var.get()
+        self.save_preferences()
+    
+    def on_brush_size_enter(self, _event):
+        """Handle Enter key in brush size spinbox"""
+        self.brush_size = self.brush_size_var.get()
+        self.save_preferences()
+    
+    def on_brush_char_change(self, _event):
+        """Handle brush character selection change"""
+        self.brush_char = self.brush_char_var.get()
+        self.save_preferences()
+    
+    def start_ascii_paint(self, event):
+        """Start painting on ASCII display when mouse button is pressed"""
+        if not self.ascii_paintbrush_enabled or not self.ascii_text:
+            return
+        
+        self.painting = True
+        self.paint_ascii_at_position(event)
+    
+    def ascii_paint_drag(self, event):
+        """Paint on ASCII display while dragging mouse"""
+        if not self.painting or not self.ascii_paintbrush_enabled or not self.ascii_text:
+            return
+        
+        self.paint_ascii_at_position(event)
+    
+    def stop_ascii_paint(self, _event):
+        """Stop painting on ASCII display when mouse button is released"""
+        self.painting = False
+    
+    def paint_ascii_at_position(self, event):
+        """Paint ASCII character at the given mouse position"""
+        try:
+            # Get the position in the text widget
+            index = self.ascii_display.index(f"@{event.x},{event.y}")
+            line, col = map(int, index.split('.'))
+            
+            # Apply brush size (paint in a square pattern)
+            for dy in range(-self.brush_size + 1, self.brush_size):
+                for dx in range(-self.brush_size + 1, self.brush_size):
+                    target_line = line + dy
+                    target_col = col + dx
+                    
+                    # Check bounds
+                    if target_line < 1:
+                        continue
+                    
+                    try:
+                        # Get current position
+                        target_index = f"{target_line}.{target_col}"
+                        
+                        # Check if position exists
+                        if self.ascii_display.compare(target_index, '>=', 'end'):
+                            continue
+                        
+                        # Get the character at this position
+                        current_char = self.ascii_display.get(target_index)
+                        
+                        # Only paint if there's a character to replace (not newline)
+                        if current_char and current_char != '\n':
+                            # Replace character
+                            self.ascii_display.delete(target_index)
+                            self.ascii_display.insert(target_index, self.brush_char)
+                    
+                    except tk.TclError:
+                        # Position doesn't exist, skip
+                        continue
+        
+        except tk.TclError:
+            # Invalid position, ignore
+            pass
+    
+    def reset_ascii_art(self):
+        """Reset ASCII art to original conversion"""
+        if self.original_image:
+            self.convert_to_ascii()
 
 def main():
     root = tk.Tk()
-    app = ASCIIPainter(root)
+    _app = ASCIIPainter(root)
     root.mainloop()
 
 if __name__ == "__main__":

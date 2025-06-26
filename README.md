@@ -10,6 +10,7 @@ ASCII Painter is a powerful desktop application that converts your images into b
 - 🎛️ **Professional Image Controls** - Levels, gamma, brightness, contrast adjustments
 - 📊 **Real-time Histogram** - See exactly how your adjustments affect the image
 - 🎨 **7 Character Styles** - From classic ASCII to modern Unicode blocks
+- 🖌️ **ASCII Paintbrush** - Paint directly on ASCII art with character-based drawing tools
 - ⚡ **Instant Preview** - All changes update live as you adjust settings
 - 💾 **Smart Export** - Save as text files or copy directly to clipboard
 - 🔄 **Memory** - All preferences automatically saved between sessions
@@ -47,8 +48,15 @@ Click **"Select Image"** and choose any photo from your computer. ASCII Painter 
 ### Step 3: Watch the Magic
 Your ASCII art updates instantly as you make changes! The live histogram shows you how your adjustments affect the image.
 
-### Step 4: Save Your Creation
-- **Save to File**: Export as a text file to share or use later
+### Step 4: Paint Your Art (NEW!)
+- **Enable Paintbrush**: Check the "Enable Paintbrush" box in the ASCII Paintbrush panel
+- **Choose Character**: Select any character from your current ASCII character set
+- **Set Brush Size**: Adjust size (1-5) for precise or broad strokes
+- **Click & Drag**: Paint directly on the ASCII art with your mouse
+- **Reset**: Use "Reset ASCII" to return to the original conversion
+
+### Step 5: Save Your Creation
+- **Save to File**: Export as a text file to share or use later (includes paintbrush edits)
 - **Copy to Clipboard**: Paste directly into documents, social media, or anywhere you want
 
 ## 🎨 Character Styles
@@ -88,19 +96,33 @@ Choose the perfect style for your art:
 ┌─────────────────────────────────────────────────────────┐
 │  📊 Histogram    🎛️ Adjustments     ⚙️ Controls       │
 ├─────────────────────────────────────────────────────────┤
-│  🖼️ Original Image              📝 ASCII Art          │
+│  🖼️ Original Image     📝 ASCII Art   🖌️ Paintbrush    │
 ├─────────────────────────────────────────────────────────┤
 │  🔧 Image Controls              💾 Export Controls      │
 └─────────────────────────────────────────────────────────┘
 ```
 
+### ASCII Paintbrush Panel (NEW!)
+Located to the right of the ASCII Art viewer:
+- **Enable Paintbrush**: Toggle painting mode on/off
+- **Brush Size**: Square brush patterns from 1x1 to 5x5 characters
+- **Brush Character**: Choose from current ASCII character set (updates automatically when you change styles)
+- **Reset ASCII**: Restore original ASCII art, removing all paint modifications
+
 ## 💡 Tips for Best Results
 
+### ASCII Conversion
 - **Start Simple**: Begin with the default settings and adjust from there
 - **Try Different Styles**: Each character set creates a unique artistic effect
 - **Use Contrast**: High-contrast images often produce the most striking ASCII art
 - **Experiment with Size**: Larger width values capture more detail
 - **Check the Histogram**: A good spread across the histogram usually means better ASCII art
+
+### ASCII Paintbrush
+- **Character Selection**: Darker characters (like `#`, `@`, `█`) work well for shadows and emphasis
+- **Brush Size**: Use size 1 for fine details, larger sizes for filling areas
+- **Style Matching**: Choose brush characters that complement your ASCII character set
+- **Save Frequently**: Your paintbrush edits are included in saves/copies but reset when reconverting
 
 ## 🔧 Troubleshooting
 
@@ -116,6 +138,12 @@ Choose the perfect style for your art:
 **ASCII art too small/large?**
 - Use the width slider to adjust size
 - Use font zoom controls (In/Out/Reset) to change text size
+
+**Paintbrush not working?**
+- Make sure "Enable Paintbrush" is checked
+- Ensure you have ASCII art displayed (load an image first)
+- Try clicking and dragging on the ASCII text area
+- Check that you've selected a brush character
 
 ## ⚙️ Technical Details
 
